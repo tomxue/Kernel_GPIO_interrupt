@@ -1,10 +1,16 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/init.h>
- 
+#include <linux/init.h> 
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
- 
+#include <linux/reboot.h>
+#include <linux/irq.h>
+#include <linux/err.h>
+#include <linux/sysrq.h>
+#include <linux/syscalls.h>
+#include <linux/kthread.h>
+#include <linux/wait.h>
+
  
 #define DRIVER_AUTHOR "Igor <hardware.coder@gmail.com>"
 #define DRIVER_DESC   "Tnterrupt Test"
@@ -25,8 +31,26 @@
 /* Interrupts variables block                                               */
 /****************************************************************************/
 short int irq_any_gpio    = 0;
- 
- 
+
+static DECLARE_WAIT_QUEUE_HEAD(wq);
+static volatile int showtime = 0;
+
+void my_reboot(void) {
+    int ret;
+    char *argv[2], *envp[1];
+    static const char * const shutdown_argv[] = { "/sbin/shutdown", "-r", "now", NULL };
+
+    call_usermodehelper(shutdown_argv[0], shutdown_argv, NULL, UMH_NO_WAIT);
+
+    printk(KERN_INFO "trying to reboot (ret = %d)", ret);
+}
+
+static int my_thread(void *arg) {
+    wait_event(wq, showtime);
+    my_reboot();
+    return 0;
+}
+
 /****************************************************************************/
 /* IRQ handler - fired on interrupt                                         */
 /****************************************************************************/
@@ -50,6 +74,8 @@ static irqreturn_t r_irq_handler(int irq, void *dev_id, struct pt_regs *regs) {
  
    // restore hard interrupts
    local_irq_restore(flags);
+   showtime = 1;
+   wake_up(&wq);
  
    return IRQ_HANDLED;
 }
@@ -80,6 +106,8 @@ void r_int_config(void) {
       printk("Irq Request failure\n");
       return;
    }
+   
+   return IRQ_HANDLED;
  
    return;
 }
@@ -90,7 +118,7 @@ void r_int_config(void) {
 /****************************************************************************/
 void r_int_release(void) {
  
-   free_irq(irq_any_gpio, GPIO_ANY_GPIO_DEVICE_DESC);
+   //free_irq(irq_any_gpio, GPIO_ANY_GPIO_DEVICE_DESC);
    gpio_free(GPIO_ANY_GPIO);
  
    return;
@@ -102,8 +130,11 @@ void r_int_release(void) {
 /****************************************************************************/
 int r_init(void) {
  
-   printk(KERN_NOTICE "Hello !\n");
+   printk(KERN_NOTICE "Hello!\n");
    r_int_config();
+   
+   kthread_run(my_thread, "nothing", "my_module");
+//   request_any_context_irq(irq_any_gpio, r_irq_handler, IRQF_TRIGGER_FALLING, "irq-name", NULL);
  
    return 0;
 }

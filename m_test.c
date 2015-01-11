@@ -37,10 +37,10 @@ static volatile int showtime = 0;
 
 void my_reboot(void) {
     int ret;
-    char *argv[2], *envp[1];
-    static const char * const shutdown_argv[] = { "/sbin/shutdown", "-r", "now", NULL };
+    static char *shutdown_argv[] = { "/sbin/shutdown", "-r", "now", NULL };
+    char *envp[]={NULL};
 
-    call_usermodehelper(shutdown_argv[0], shutdown_argv, NULL, UMH_NO_WAIT);
+    ret = call_usermodehelper(shutdown_argv[0], shutdown_argv, envp, UMH_NO_WAIT);
 
     printk(KERN_INFO "trying to reboot (ret = %d)", ret);
 }
@@ -84,16 +84,16 @@ static irqreturn_t r_irq_handler(int irq, void *dev_id, struct pt_regs *regs) {
 /****************************************************************************/
 /* This function configures interrupts.                                     */
 /****************************************************************************/
-void r_int_config(void) {
+int r_int_config(void) {
  
    if (gpio_request(GPIO_ANY_GPIO, GPIO_ANY_GPIO_DESC)) {
       printk("GPIO request faiure: %s\n", GPIO_ANY_GPIO_DESC);
-      return;
+      return -1;
    }
  
    if ( (irq_any_gpio = gpio_to_irq(GPIO_ANY_GPIO)) < 0 ) {
       printk("GPIO to IRQ mapping faiure %s\n", GPIO_ANY_GPIO_DESC);
-      return;
+      return -2;
    }
  
    printk(KERN_NOTICE "Mapped int %d\n", irq_any_gpio);
@@ -104,12 +104,12 @@ void r_int_config(void) {
                    GPIO_ANY_GPIO_DESC,
                    GPIO_ANY_GPIO_DEVICE_DESC)) {
       printk("Irq Request failure\n");
-      return;
+      return -3;
    }
    
    return IRQ_HANDLED;
  
-   return;
+   return 0;
 }
  
  

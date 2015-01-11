@@ -1,8 +1,0 @@
-make -C /lib/modules/3.12.35+/build M=/home/pi/workspace/test modules
-make[1]: Entering directory '/home/pi/linux-652b904db26e1f83216627381a106ba6998d024a'
-  CC [M]  /home/pi/workspace/test/m_test.o
-  Building modules, stage 2.
-  MODPOST 1 modules
-  CC      /home/pi/workspace/test/m_test.mod.o
-  LD [M]  /home/pi/workspace/test/m_test.ko
-make[1]: Leaving directory '/home/pi/linux-652b904db26e1f83216627381a106ba6998d024a'

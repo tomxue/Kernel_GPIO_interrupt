@@ -11,9 +11,10 @@
 #include <linux/kthread.h>
 #include <linux/wait.h>
 
- 
-#define DRIVER_AUTHOR "Igor <hardware.coder@gmail.com>"
-#define DRIVER_DESC   "Tnterrupt Test"
+// The 1st commit is from Igor, and the later changes are made by Tom Xue 
+// #define DRIVER_AUTHOR "Igor <hardware.coder@gmail.com>"
+#define DRIVER_AUTHOR "Tom Xue tomxue0126@gmail.com>"
+#define DRIVER_DESC   "GPIO Interrupt Test"
  
 // we want GPIO_17 (pin 11 on P5 pinout raspberry pi rev. 2 board)
 // to generate interrupt
@@ -37,10 +38,10 @@ static volatile int showtime = 0;
 
 void my_reboot(void) {
     int ret;
-    static char *shutdown_argv[] = { "/sbin/shutdown", "-r", "now", NULL };
-    char *envp[]={NULL};
+    static char *argv[] = { "/sbin/shutdown", "-r", "now", NULL };
+    char *envp[]={ NULL };
 
-    ret = call_usermodehelper(shutdown_argv[0], shutdown_argv, envp, UMH_NO_WAIT);
+    ret = call_usermodehelper(argv[0], argv, envp, UMH_NO_WAIT);
 
     printk(KERN_INFO "trying to reboot (ret = %d)", ret);
 }
@@ -74,6 +75,7 @@ static irqreturn_t r_irq_handler(int irq, void *dev_id, struct pt_regs *regs) {
  
    // restore hard interrupts
    local_irq_restore(flags);
+
    showtime = 1;
    wake_up(&wq);
  
@@ -86,6 +88,7 @@ static irqreturn_t r_irq_handler(int irq, void *dev_id, struct pt_regs *regs) {
 /****************************************************************************/
 int r_int_config(void) {
  
+    // (1) request GPIO
    if (gpio_request(GPIO_ANY_GPIO, GPIO_ANY_GPIO_DESC)) {
       printk("GPIO request faiure: %s\n", GPIO_ANY_GPIO_DESC);
       return -1;
@@ -98,6 +101,7 @@ int r_int_config(void) {
  
    printk(KERN_NOTICE "Mapped int %d\n", irq_any_gpio);
  
+   // (2) request irq
    if (request_irq(irq_any_gpio,
                    (irq_handler_t ) r_irq_handler,
                    IRQF_TRIGGER_FALLING,
@@ -118,7 +122,7 @@ int r_int_config(void) {
 /****************************************************************************/
 void r_int_release(void) {
  
-   //free_irq(irq_any_gpio, GPIO_ANY_GPIO_DEVICE_DESC);
+   free_irq(irq_any_gpio, GPIO_ANY_GPIO_DEVICE_DESC);
    gpio_free(GPIO_ANY_GPIO);
  
    return;
@@ -134,7 +138,6 @@ int r_init(void) {
    r_int_config();
    
    kthread_run(my_thread, "nothing", "my_module");
-//   request_any_context_irq(irq_any_gpio, r_irq_handler, IRQF_TRIGGER_FALLING, "irq-name", NULL);
  
    return 0;
 }
